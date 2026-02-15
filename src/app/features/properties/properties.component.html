@@ -1,0 +1,61 @@
+<div class="properties-container glass" *ngIf="node">
+  <div class="properties-header">
+    <h3>Node Properties</h3>
+    <button class="close-btn" (click)="closed.emit()">
+      <lucide-angular [img]="icons.X" size="18"></lucide-angular>
+    </button>
+  </div>
+
+  <div class="properties-content">
+    <div class="field">
+      <label>Label</label>
+      <input type="text" [(ngModel)]="node.data.label" placeholder="Node Name">
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <textarea [(ngModel)]="node.data.description" placeholder="What does this node do?"></textarea>
+    </div>
+
+    <!-- Script Node Specific -->
+    <div class="field" *ngIf="node.type === 'SCRIPT'">
+      <label>JavaScript Code</label>
+      <textarea class="code-editor" [(ngModel)]="node.data.script" placeholder="// Write your code here..."></textarea>
+    </div>
+
+    <!-- Decision Node Specific -->
+    <div class="field" *ngIf="node.type === 'DECISION'">
+      <label>Condition (JS Expression)</label>
+      <input type="text" [(ngModel)]="node.data.condition" placeholder="e.g. data.value > 10">
+      <small>Return true for top output, false for bottom output.</small>
+    </div>
+
+    <!-- API Node Specific -->
+    <div class="field-group" *ngIf="node.type === 'API'">
+      <div class="field">
+        <label>Endpoint URL</label>
+        <input type="text" *ngIf="node.data.apiConfig" [(ngModel)]="node.data.apiConfig.url" placeholder="https://api.example.com/data">
+      </div>
+      <div class="field">
+        <label>Method</label>
+        <select *ngIf="node.data.apiConfig" [(ngModel)]="node.data.apiConfig.method">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="properties-footer">
+    <button class="btn-danger" (click)="onDelete()">
+      <lucide-angular [img]="icons.Trash2" size="16"></lucide-angular>
+      <span>Delete Node</span>
+    </button>
+    <button class="btn-primary" (click)="onSave()">
+      <lucide-angular [img]="icons.Save" size="16"></lucide-angular>
+      <span>Save Changes</span>
+    </button>
+  </div>
+</div>

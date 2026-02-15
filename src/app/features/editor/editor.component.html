@@ -1,0 +1,180 @@
+<div class="editor-container">
+  <!-- Top Toolbar -->
+  <header class="toolbar glass">
+    <div class="logo">
+      <div class="icon-box">
+        <lucide-angular [img]="icons.Network" size="20"></lucide-angular>
+      </div>
+      <span>FlowGen</span>
+    </div>
+    
+    <div class="actions">
+      <button class="btn-icon" (click)="onSave()" title="Save Flow">
+        <lucide-angular [img]="icons.Save" size="18"></lucide-angular>
+      </button>
+      <button class="btn-icon" (click)="onExport()" title="Export JSON">
+        <lucide-angular [img]="icons.Download" size="18"></lucide-angular>
+      </button>
+      <div class="separator"></div>
+      <button class="btn-icon" (click)="undo()" [disabled]="!canUndo()" title="Undo">
+        <lucide-angular [img]="icons.Undo2" size="18"></lucide-angular>
+      </button>
+      <button class="btn-icon" (click)="redo()" [disabled]="!canRedo()" title="Redo">
+        <lucide-angular [img]="icons.Redo2" size="18"></lucide-angular>
+      </button>
+      <div class="separator"></div>
+      <button class="btn-primary" (click)="runSimulation()" title="Execute Flow">
+        <lucide-angular [img]="icons.Play" size="16"></lucide-angular>
+        <span>Run Simulation</span>
+      </button>
+    </div>
+    
+    <div class="meta">
+      <div class="flow-name-container">
+        <input class="flow-name-input" [(ngModel)]="flow().name">
+      </div>
+      
+      <div class="validation-status" *ngIf="validationErrors().length > 0" (click)="showValidationErrors()" style="cursor: pointer">
+        <lucide-angular [img]="icons.AlertTriangle" size="18" [class.error]="hasErrors()" [class.warning]="!hasErrors()"></lucide-angular>
+        <span class="badge" [class.error]="hasErrors()">{{ validationErrors().length }}</span>
+      </div>
+
+      <button class="btn-icon" (click)="toggleLogs()">
+        <lucide-angular [img]="icons.Terminal" size="18"></lucide-angular>
+      </button>
+      <button class="btn-icon">
+        <lucide-angular [img]="icons.Info" size="18"></lucide-angular>
+      </button>
+    </div>
+  </header>
+
+  <main class="main-layout">
+    <!-- Left Sidebar: Palette -->
+    <aside class="palette glass" [class.collapsed]="!isSidebarOpen()">
+      <div class="sidebar-header">
+        <h3>Nodes</h3>
+        <button class="toggle-btn" (click)="toggleSidebar()">
+          <lucide-angular [img]="icons.Settings" size="16"></lucide-angular>
+        </button>
+      </div>
+      
+      <div class="node-group">
+        <div class="node-item" fExternalItem [fData]="'START'">
+          <div class="node-preview start"></div>
+          <span>Start</span>
+        </div>
+        <div class="node-item" fExternalItem [fData]="'TASK'">
+          <div class="node-preview task"></div>
+          <span>Task</span>
+        </div>
+        <div class="node-item" fExternalItem [fData]="'DECISION'">
+          <div class="node-preview decision"></div>
+          <span>Decision</span>
+        </div>
+        <div class="node-item" fExternalItem [fData]="'SCRIPT'">
+          <div class="node-preview script"></div>
+          <span>Script</span>
+        </div>
+        <div class="node-item" fExternalItem [fData]="'API'">
+          <div class="node-preview api"></div>
+          <span>API Call</span>
+        </div>
+        <div class="node-item" fExternalItem [fData]="'END'">
+          <div class="node-preview end"></div>
+          <span>End</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Canvas -->
+    <section class="canvas-area">
+      <f-flow fDraggable 
+              (fCreateNode)="onNodeCreated($event)" 
+              (fMoveNodes)="onNodesMoved($event)"
+              (fCreateConnection)="onConnectionCreated($event)"
+              (fSelectionChange)="onSelectionChanged($event)">
+        <f-canvas>
+          <!-- Nodes -->
+          <div *ngFor="let node of flow().nodes" 
+               fNode 
+               [fNodeId]="node.id" 
+               [(fNodePosition)]="node.position"
+               class="flow-node"
+               [ngClass]="getNodeClass(node.type)"
+               [class.active]="node.id === activeNodeId()">
+            
+            <div class="node-content">
+              <div class="node-icon">
+                <lucide-angular [img]="getNodeIcon(node.type)" size="16"></lucide-angular>
+              </div>
+              <div class="node-details">
+                <span class="node-label">{{ node.data.label }}</span>
+                <span class="node-type">{{ node.type }}</span>
+              </div>
+            </div>
+
+            <!-- Input Port -->
+            <div *ngIf="node.type !== 'START'" 
+                 fNodeInput 
+                 [fInputId]="node.id"
+                 class="port input-port"></div>
+            
+            <!-- Output Port(s) -->
+            <ng-container *ngIf="node.type !== 'END'">
+              <div *ngIf="node.type !== 'DECISION'" 
+                   fNodeOutput 
+                   [fOutputId]="node.id"
+                   class="port output-port"></div>
+              
+              <ng-container *ngIf="node.type === 'DECISION'">
+                <div fNodeOutput fOutputId="true" class="port output-port decision-true" title="True"></div>
+                <div fNodeOutput fOutputId="false" class="port output-port decision-false" title="False"></div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+          <!-- Connections -->
+          <f-connection *ngFor="let conn of flow().connections"
+                        [fConnectionId]="conn.id"
+                        [fOutputId]="conn.source"
+                        [fInputId]="conn.target">
+          </f-connection>
+
+        </f-canvas>
+      </f-flow>
+    </section>
+
+    <!-- Right Sidebar: Properties -->
+    <app-properties *ngIf="selectedNode()" 
+                     [node]="selectedNode()" 
+                     (closed)="selectedNode.set(null)"
+                     (deleted)="deleteNode($event)"
+                     (updated)="updateNode($event)">
+    </app-properties>
+
+    <!-- Bottom: Logs -->
+    <footer class="logs-panel glass" [class.open]="isLogsOpen()">
+      <div class="logs-header">
+        <div class="header-left">
+          <span>Execution Logs ({{ logs().length }})</span>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" (click)="clearLogs()" title="Clear logs">
+            <lucide-angular [img]="icons.Trash2" size="14"></lucide-angular>
+          </button>
+          <button class="icon-btn" (click)="toggleLogs()" title="Close">
+            <lucide-angular [img]="icons.X" size="14"></lucide-angular>
+          </button>
+        </div>
+      </div>
+      <div class="logs-content">
+        <div *ngFor="let log of logs()" class="log-entry" [ngClass]="log.status">
+          <span class="log-time">{{ log.timestamp | date:'HH:mm:ss' }}</span>
+          <span class="log-label">[{{ log.nodeLabel }}]</span>
+          <span class="log-msg">{{ log.message }}</span>
+        </div>
+        <div *ngIf="logs().length === 0" class="log-entry info">No execution history.</div>
+      </div>
+    </footer>
+  </main>
+</div>
